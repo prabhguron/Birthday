@@ -1,46 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Shreyas Birthday Card</title>
+    <title>Shreya's Birthday Card</title>
     <link rel="stylesheet" href="styles.css" />
-    <script src="script.js"></script>
-  </head>
-  <body>
+   
+    </style>
+</head>
+<body>
     <div class="invitation-card">
-    <div class="border">
-      <div class="header">
-        <div class="name">Shreya's</div>
-        <div class="age-birthday">23<sup>RD</sup> BDAY</div>
-        <div class="party-text">PARTY!</div>
-      </div>
+        <div class="border">
+            <div class="header">
+                <div class="name">Shreya's</div>
+                <div class="age-birthday">23<sup>RD</sup> BDAY</div>
+                <div class="party-text">PARTY!</div>
+            </div>
 
-      <div class="details"> 
-      <table>
-          <tr>
-            <th>When:</th>
-            <td>June 15 2025</td>
-          </tr>
-          <tr>
-            <th>TIME</th>
-            <td>1pm-4pm</td>
-          </tr>
-          <tr>
-            <th>Where:</th>
-            <td>Deer Lake Park, Burnaby</td>
-          </tr>
-          <tr>
-            <th>Bring:</th>
-            <td class="tdStyle">NO GIFTS ONLY FOOD</td>
-          </tr>
-          <tr>
-            <th>Info:</th>
-            <td class="tdStyle">Piñata and games!</td>
-          </tr>
-        </table>
-      </div>
+            <div class="details">
+                <table>
+                    <tr>
+                        <th>When:</th>
+                        <td>June 15, 2025</td>
+                    </tr>
+                    <tr>
+                        <th>Time:</th>
+                        <td>1pm - 4pm</td>
+                    </tr>
+                    <tr>
+                        <th>Where:</th>
+                        <td>Deer Lake Park, Burnaby</td>
+                    </tr>
+                    <tr>
+                        <th>Bring:</th>
+                        <td><span class="tdStyle">NO GIFTS, ONLY FOOD</span></td>
+                    </tr>
+                    <tr>
+                        <th>Info:</th>
+                        <td><span class="tdStyle">Piñata and games!</span></td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="rsvp-section">
+                <h2>RSVP</h2>
+                <form id="rsvpForm">
+                    <div class="form-group">
+                        <label for="guestName">Your Name:</label>
+                        <input type="text" id="guestName" name="guestName" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="attendance">Will you be coming?</label>
+                        <select id="attendance" name="attendance" required>
+                            <option value="">Select...</option>
+                            <option value="yes">Yes, I'll be there! 🎉</option>
+                            <option value="no">Sorry, can't make it 😢</option>
+                            <option value="maybe">Maybe / Not sure yet 🤔</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group hidden" id="foodGroup">
+                        <div class="food-input-group">
+                            <div class="form-group food-field">
+                                <label for="foodBringing">What food will you bring?</label>
+                                <input type="text" id="foodBringing" name="foodBringing" placeholder="e.g., Pizza, Cake, Sandwiches, if nothing say none">
+                            </div>
+                            <div class="form-group quantity-field">
+                                <label for="foodQuantity">How many?</label>
+                                <div class="quantity-input">
+                                    <button type="button" class="quantity-btn" id="decreaseBtn">−</button>
+                                    <input type="number" id="foodQuantity" name="foodQuantity" value="1" min="1" max="99">
+                                    <button type="button" class="quantity-btn" id="increaseBtn">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="submit-btn">Submit RSVP</button>
+                </form>
+            </div>
+
+            <div class="rsvp-list" id="rsvpList">
+                <h3>Who's Coming:</h3>
+                <div id="guestList"></div>
+            </div>
+        </div>
     </div>
-    </body>
 
+    <script src="script.js"></script>
+</body>
 </html>
