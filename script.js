@@ -1,4 +1,4 @@
-// Store RSVP data in localStorage
+// Store RSVP data
 let rsvpData = [];
 
 // DOM elements
@@ -10,8 +10,16 @@ const foodQuantityInput = document.getElementById('foodQuantity');
 const increaseBtn = document.getElementById('increaseBtn');
 const decreaseBtn = document.getElementById('decreaseBtn');
 
+// Firebase imports - will be available after Firebase is loaded
+let db;
+
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Wait a moment for Firebase to load
+    setTimeout(() => {
+        initializeFirebase();
+    }, 1000);
+    
     // Add event listeners
     rsvpForm.addEventListener('submit', handleFormSubmit);
     attendanceSelect.addEventListener('change', toggleFoodField);
@@ -23,11 +31,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Prevent form submission when quantity buttons are clicked
     increaseBtn.addEventListener('click', (e) => e.preventDefault());
     decreaseBtn.addEventListener('click', (e) => e.preventDefault());
-    
-    // Load existing RSVP data from localStorage and display it
-    loadRSVPData();
-    displayRSVPs();
 });
+
+// Initialize Firebase connection
+function initializeFirebase() {
+    if (window.firebaseDb) {
+        db = window.firebaseDb;
+        console.log('🔥 Firebase connected successfully!');
+        // Load existing RSVP data from Firebase and display it
+        loadRSVPData();
+    } else {
+        console.error('Firebase not available, falling back to localStorage');
+        loadRSVPDataFromLocalStorage();
+        displayRSVPs();
+    }
+}
 
 // Quantity control functions
 function increaseQuantity() {
@@ -44,31 +62,82 @@ function decreaseQuantity() {
     }
 }
 
-// Load RSVP data from localStorage
-function loadRSVPData() {
+// Load RSVP data from Firebase
+async function loadRSVPData() {
+    try {
+        // Import Firebase functions dynamically
+        const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+        
+        const querySnapshot = await getDocs(collection(db, 'rsvps'));
+        rsvpData = [];
+        
+        querySnapshot.forEach((doc) => {
+            rsvpData.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+        
+        console.log('✅ Loaded', rsvpData.length, 'RSVPs from Firebase');
+        displayRSVPs();
+    } catch (error) {
+        console.error('Error loading RSVP data from Firebase:', error);
+        showNotification('Error loading data. Please refresh the page.', 'error');
+        // Fallback to localStorage
+        loadRSVPDataFromLocalStorage();
+        displayRSVPs();
+    }
+}
+
+// Fallback: Load RSVP data from localStorage
+function loadRSVPDataFromLocalStorage() {
     try {
         const savedData = localStorage.getItem('shreya-birthday-rsvp');
         if (savedData) {
             rsvpData = JSON.parse(savedData);
         }
     } catch (error) {
-        console.error('Error loading RSVP data:', error);
+        console.error('Error loading RSVP data from localStorage:', error);
         rsvpData = [];
     }
 }
 
-// Save RSVP data to localStorage
-function saveRSVPData() {
+// Save RSVP data to Firebase
+async function saveRSVPData(guestData, isUpdate = false, guestId = null) {
     try {
-        localStorage.setItem('shreya-birthday-rsvp', JSON.stringify(rsvpData));
+        // Import Firebase functions dynamically
+        const { collection, addDoc, doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+        
+        if (isUpdate && guestId) {
+            // Update existing document
+            const guestRef = doc(db, 'rsvps', guestId);
+            await updateDoc(guestRef, guestData);
+            console.log('✅ Updated RSVP in Firebase');
+        } else {
+            // Add new document
+            const docRef = await addDoc(collection(db, 'rsvps'), guestData);
+            guestData.id = docRef.id;
+            console.log('✅ Saved RSVP to Firebase with ID:', docRef.id);
+        }
+        
+        return true;
     } catch (error) {
-        console.error('Error saving RSVP data:', error);
-        showNotification('Error saving data. Please try again.', 'error');
+        console.error('Error saving RSVP data to Firebase:', error);
+        showNotification('Error saving to database. Saved locally instead.', 'error');
+        
+        // Fallback to localStorage
+        try {
+            localStorage.setItem('shreya-birthday-rsvp', JSON.stringify(rsvpData));
+            return true;
+        } catch (localError) {
+            console.error('Error saving to localStorage:', localError);
+            return false;
+        }
     }
 }
 
 // Handle form submission
-function handleFormSubmit(e) {
+async function handleFormSubmit(e) {
     e.preventDefault();
     
     const formData = new FormData(rsvpForm);
@@ -96,9 +165,14 @@ function handleFormSubmit(e) {
         timestamp: new Date().toISOString()
     };
     
+    let isUpdate = false;
+    let guestId = null;
+    
     if (existingGuestIndex !== -1) {
         // Update existing guest
-        rsvpData[existingGuestIndex] = guestData;
+        isUpdate = true;
+        guestId = rsvpData[existingGuestIndex].id;
+        rsvpData[existingGuestIndex] = { ...guestData, id: guestId };
         showNotification(`Updated RSVP for ${guestName}!`);
     } else {
         // Add new guest
@@ -106,14 +180,18 @@ function handleFormSubmit(e) {
         showNotification(`Thanks for your RSVP, ${guestName}!`);
     }
     
-    // Save to localStorage
-    saveRSVPData();
+    // Save to Firebase
+    const saved = await saveRSVPData(guestData, isUpdate, guestId);
     
-    // Clear form and refresh display
-    rsvpForm.reset();
-    foodQuantityInput.value = 1; // Reset quantity to 1
-    toggleFoodField(); // Reset food field visibility
-    displayRSVPs();
+    if (saved) {
+        // Clear form and refresh display
+        rsvpForm.reset();
+        foodQuantityInput.value = 1; // Reset quantity to 1
+        toggleFoodField(); // Reset food field visibility
+        displayRSVPs();
+    } else {
+        showNotification('Failed to save RSVP. Please try again.', 'error');
+    }
 }
 
 // Toggle food field based on attendance selection
@@ -124,14 +202,10 @@ function toggleFoodField() {
     if (attendance === 'yes') {
         foodGroup.classList.remove('hidden');
         foodInput.required = true;
-    }  
-    else if (attendance === 'maybe') {
+    } else if (attendance === 'maybe') {
         foodGroup.classList.remove('hidden');
-        foodInput.required = true;}
-    
-    
-    
-    else {
+        foodInput.required = true;
+    } else {
         foodGroup.classList.add('hidden');
         foodInput.required = false;
         foodInput.value = ''; // Clear the field
@@ -188,8 +262,6 @@ function createGuestHTML(guest) {
             ${foodInfo}
         </div>
     `;
-
-    
 }
 
 // Show notification
@@ -273,10 +345,31 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Optional: Add a function to clear all data (for testing purposes)
-function clearAllRSVPs() {
+async function clearAllRSVPs() {
     if (confirm('Are you sure you want to clear all RSVP data? This cannot be undone.')) {
+        try {
+            if (db) {
+                const { collection, getDocs, deleteDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+                const querySnapshot = await getDocs(collection(db, 'rsvps'));
+                const deletePromises = [];
+                
+                querySnapshot.forEach((document) => {
+                    deletePromises.push(deleteDoc(doc(db, 'rsvps', document.id)));
+                });
+                
+                await Promise.all(deletePromises);
+                console.log('✅ Cleared all RSVPs from Firebase');
+                
+                // Also clear localStorage fallback
+                localStorage.removeItem('shreya-birthday-rsvp');
+            }
+        } catch (error) {
+            console.error('Error clearing Firebase data:', error);
+            // Fallback to localStorage
+            localStorage.removeItem('shreya-birthday-rsvp');
+        }
+        
         rsvpData = [];
-        localStorage.removeItem('shreya-birthday-rsvp');
         displayRSVPs();
         showNotification('All RSVP data cleared.');
     }
